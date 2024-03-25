@@ -128,7 +128,7 @@ impl Compositor {
                         label: Some(
                             "iced_wgpu::window::compositor device descriptor",
                         ),
-                        required_features: wgpu::Features::empty(),
+                        required_features: wgpu::Features::empty() | wgpu::Features::BGRA8UNORM_STORAGE,
                         required_limits,
                     },
                     None,
