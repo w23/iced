@@ -2,19 +2,8 @@ use iced::mouse;
 use iced::time::Instant;
 use iced::widget::shader;
 use iced::widget::shader::wgpu;
-use iced::widget::shader::wgpu::Color;
 use iced::window;
 use iced::{Element, Length, Rectangle, Size, Subscription};
-
-fn main() -> iced::Result {
-    iced::program(
-        "Custom Shader Quad - Iced",
-        BasicShader::update,
-        BasicShader::view,
-    )
-    .subscription(BasicShader::subscription)
-    .run()
-}
 
 struct CustomShaderPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -70,13 +59,7 @@ impl CustomShaderPipeline {
                 view: target,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    //load: wgpu::LoadOp::Load,
-                    load: wgpu::LoadOp::Clear(Color {
-                        r: 1.0,
-                        g: 0.0,
-                        b: 1.0,
-                        a: 0.0,
-                    }),
+                    load: wgpu::LoadOp::Load,
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -86,14 +69,16 @@ impl CustomShaderPipeline {
         });
 
         pass.set_pipeline(&self.pipeline);
-        pass.set_scissor_rect(
-            viewport.x,
-            viewport.y,
-            viewport.width,
-            viewport.height,
+        pass.set_viewport(
+            viewport.x as f32,
+            viewport.y as f32,
+            viewport.width as f32,
+            viewport.height as f32,
+            0.0,
+            1.0,
         );
 
-        pass.draw(0..4, 0..1);
+        pass.draw(0..3, 0..1);
     }
 }
 
@@ -186,4 +171,14 @@ impl BasicShader {
     fn subscription(&self) -> Subscription<Message> {
         window::frames().map(Message::Tick)
     }
+}
+
+fn main() -> iced::Result {
+    iced::program(
+        "Custom Shader Quad - Iced",
+        BasicShader::update,
+        BasicShader::view,
+    )
+    .subscription(BasicShader::subscription)
+    .run()
 }
