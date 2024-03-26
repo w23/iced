@@ -5,8 +5,16 @@ use iced::widget::shader::wgpu;
 use iced::window;
 use iced::{Element, Length, Rectangle, Size, Subscription};
 
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+pub struct Uniforms {
+    aspect: f32,
+}
+
 struct CustomShaderPipeline {
     pipeline: wgpu::RenderPipeline,
+    uniform_buffer: wgpu::Buffer,
+    uniform_bind_group: wgpu::BindGroup,
 }
 
 impl CustomShaderPipeline {
@@ -42,10 +50,39 @@ impl CustomShaderPipeline {
                 }),
                 multiview: None,
             });
-        Self { pipeline }
+
+        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("shader_quad uniform buffer"),
+            size: std::mem::size_of::<Uniforms>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let uniform_bind_group_layout = pipeline.get_bind_group_layout(0);
+        let uniform_bind_group =
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("shader_quad uniform bind group"),
+                layout: &uniform_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }],
+            });
+
+        Self {
+            pipeline,
+            uniform_buffer,
+            uniform_bind_group,
+        }
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self, queue: &wgpu::Queue, uniforms: &Uniforms) {
+        queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            bytemuck::bytes_of(uniforms),
+        );
+    }
 
     fn render(
         &self,
@@ -77,6 +114,7 @@ impl CustomShaderPipeline {
             0.0,
             1.0,
         );
+        pass.set_bind_group(0, &self.uniform_bind_group, &[]);
 
         pass.draw(0..3, 0..1);
     }
@@ -96,9 +134,9 @@ impl shader::Primitive for CustomShaderPrimitive {
         &self,
         format: wgpu::TextureFormat,
         device: &wgpu::Device,
-        _queue: &wgpu::Queue,
+        queue: &wgpu::Queue,
         _bounds: Rectangle,
-        _target_size: Size<u32>,
+        target_size: Size<u32>,
         _scale_factor: f32,
         storage: &mut shader::Storage,
     ) {
@@ -108,7 +146,12 @@ impl shader::Primitive for CustomShaderPrimitive {
 
         let pipeline = storage.get_mut::<CustomShaderPipeline>().unwrap();
 
-        pipeline.update();
+        pipeline.update(
+            queue,
+            &Uniforms {
+                aspect: target_size.width as f32 / target_size.height as f32,
+            },
+        );
     }
 
     fn render(
