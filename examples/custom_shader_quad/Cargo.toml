@@ -1,5 +1,5 @@
 [package]
-name = "custom_shader_basic"
+name = "custom_shader_quad"
 version = "0.1.0"
 authors = ["Ivan Avdeev <me@provod.works>"]
 edition = "2021"

@@ -8,7 +8,7 @@ use iced::{Element, Length, Rectangle, Size, Subscription};
 
 fn main() -> iced::Result {
     iced::program(
-        "Custom Shader - Iced",
+        "Custom Shader Quad - Iced",
         BasicShader::update,
         BasicShader::view,
     )
@@ -123,7 +123,6 @@ impl shader::Primitive for CustomShaderPrimitive {
 
         let pipeline = storage.get_mut::<CustomShaderPipeline>().unwrap();
 
-        //upload data to GPU
         pipeline.update();
     }
 
@@ -135,13 +134,8 @@ impl shader::Primitive for CustomShaderPrimitive {
         viewport: Rectangle<u32>,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        //at this point our pipeline should always be initialized
         let pipeline = storage.get::<CustomShaderPipeline>().unwrap();
-
-        //render primitive
         pipeline.render(target, encoder, viewport);
-
-        // cannot clear textureview :E encoder.clear_texture(
     }
 }
 
