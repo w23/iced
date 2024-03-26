@@ -2,12 +2,16 @@ use iced::mouse;
 use iced::widget::shader::wgpu;
 use iced::widget::{column, row, shader, slider, text};
 use iced::{Alignment, Element, Length, Rectangle, Size};
+use glam::Vec2;
 
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Uniforms {
     aspect: f32,
     max_iter: u32,
+    scale: f32,
+    center_x: f32,
+    center_y: f32,
 }
 
 struct CustomShaderPipeline {
@@ -122,11 +126,17 @@ impl CustomShaderPipeline {
 #[derive(Debug, Clone, Copy)]
 struct Controls {
     max_iter: u32,
+    zoom: f32,
+    center: Vec2,
 }
 
 impl Default for Controls {
     fn default() -> Self {
-        Self { max_iter: 20 }
+        Self {
+            max_iter: 20,
+            zoom: 0.5,
+            center: Vec2::new(-1.5, 0.0),
+        }
     }
 }
 
@@ -163,6 +173,9 @@ impl shader::Primitive for CustomShaderPrimitive {
             &Uniforms {
                 aspect: target_size.width as f32 / target_size.height as f32,
                 max_iter: self.controls.max_iter,
+                scale: 1.0 / self.controls.zoom,
+                center_x: self.controls.center.x,
+                center_y: self.controls.center.y,
             },
         );
     }
@@ -183,6 +196,7 @@ impl shader::Primitive for CustomShaderPrimitive {
 #[derive(Debug, Clone)]
 enum Message {
     UpdateMaxIterations(u32),
+    UpdateZoom(f32),
 }
 
 struct CustomShaderProgram {
@@ -236,13 +250,23 @@ impl BasicShader {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let controls = row![control(
-            "Max iterations",
-            slider(1..=300, self.program.controls.max_iter, move |iter| {
-                Message::UpdateMaxIterations(iter)
-            })
-            .width(Length::Fill)
-        ),];
+        let controls = row![
+            control(
+                "Max iterations",
+                slider(1..=300, self.program.controls.max_iter, move |iter| {
+                    Message::UpdateMaxIterations(iter)
+                })
+                .width(Length::Fill)
+            ),
+            control(
+                "Zoom",
+                slider(0.2..=100.0, self.program.controls.zoom, move |zoom| {
+                    Message::UpdateZoom(zoom)
+                })
+                .step(0.01)
+                .width(Length::Fill)
+            ),
+        ];
 
         let shader = shader(&self.program)
             .width(Length::Fill)
@@ -261,6 +285,9 @@ impl BasicShader {
         match message {
             Message::UpdateMaxIterations(max_iter) => {
                 self.program.controls.max_iter = max_iter;
+            }
+            Message::UpdateZoom(zoom) => {
+                self.program.controls.zoom = zoom;
             }
         }
     }

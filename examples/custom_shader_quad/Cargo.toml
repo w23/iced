@@ -9,3 +9,6 @@ iced.workspace = true
 iced.features = ["debug", "advanced"]
 
 bytemuck.workspace = true
+
+glam.workspace = true
+glam.features = ["bytemuck"]

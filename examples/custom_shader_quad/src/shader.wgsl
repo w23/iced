@@ -1,6 +1,9 @@
 struct Uniforms {
 	aspect: f32,
 	max_iter: u32,
+	scale: f32,
+	center_x: f32,
+	center_y: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -23,7 +26,8 @@ fn vs_main(in: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-	var p = in.uv;
+	let p0 = (in.uv - vec2f(.5)) * uniforms.scale + vec2f(uniforms.center_x, uniforms.center_y);
+	var p = p0;
 	var i: u32 = 0;
 	for (; i < uniforms.max_iter; i = i + 1) {
 		let d = p * p;
@@ -31,9 +35,13 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 			break;
 		}
 
-		let next = vec2f(d.x - d.y + in.uv.x, 2. * p.x * p.y + in.uv.y);
+		let next = vec2f(d.x - d.y + p0.x, 2. * p.x * p.y + p0.y);
 		p = next;
 	}
 
-	return vec4f(vec3f(f32(i) / f32(uniforms.max_iter)), 0.);
+	if (i >= uniforms.max_iter) {
+		return vec4f(0.);
+	} else {
+		return vec4f(vec3f(f32(i) / f32(uniforms.max_iter)), 0.);
+	}
 }
