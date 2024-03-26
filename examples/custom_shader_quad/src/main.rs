@@ -1,14 +1,13 @@
 use iced::mouse;
-use iced::time::Instant;
-use iced::widget::shader;
 use iced::widget::shader::wgpu;
-use iced::window;
-use iced::{Element, Length, Rectangle, Size, Subscription};
+use iced::widget::{column, row, shader, slider, text};
+use iced::{Alignment, Element, Length, Rectangle, Size};
 
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Uniforms {
     aspect: f32,
+    max_iter: u32,
 }
 
 struct CustomShaderPipeline {
@@ -120,12 +119,25 @@ impl CustomShaderPipeline {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Controls {
+    max_iter: u32,
+}
+
+impl Default for Controls {
+    fn default() -> Self {
+        Self { max_iter: 20 }
+    }
+}
+
 #[derive(Debug)]
-struct CustomShaderPrimitive {}
+struct CustomShaderPrimitive {
+    controls: Controls,
+}
 
 impl CustomShaderPrimitive {
-    fn new() -> Self {
-        Self {}
+    fn new(controls: Controls) -> Self {
+        Self { controls }
     }
 }
 
@@ -150,6 +162,7 @@ impl shader::Primitive for CustomShaderPrimitive {
             queue,
             &Uniforms {
                 aspect: target_size.width as f32 / target_size.height as f32,
+                max_iter: self.controls.max_iter,
             },
         );
     }
@@ -167,11 +180,21 @@ impl shader::Primitive for CustomShaderPrimitive {
     }
 }
 
-struct CustomShaderProgram {}
-
 #[derive(Debug, Clone)]
 enum Message {
-    Tick(Instant),
+    UpdateMaxIterations(u32),
+}
+
+struct CustomShaderProgram {
+    controls: Controls,
+}
+
+impl CustomShaderProgram {
+    fn new() -> Self {
+        Self {
+            controls: Controls::default(),
+        }
+    }
 }
 
 impl<Message> shader::Program<Message> for CustomShaderProgram {
@@ -184,11 +207,13 @@ impl<Message> shader::Program<Message> for CustomShaderProgram {
         _cursor: mouse::Cursor,
         _bounds: Rectangle,
     ) -> Self::Primitive {
-        CustomShaderPrimitive::new()
+        CustomShaderPrimitive::new(self.controls)
     }
 }
 
-struct BasicShader {}
+struct BasicShader {
+    program: CustomShaderProgram,
+}
 
 impl Default for BasicShader {
     fn default() -> Self {
@@ -196,23 +221,48 @@ impl Default for BasicShader {
     }
 }
 
+fn control<'a>(
+    label: &'static str,
+    control: impl Into<Element<'a, Message>>,
+) -> Element<'a, Message> {
+    row![text(label), control.into()].spacing(10).into()
+}
+
 impl BasicShader {
     fn new() -> Self {
-        Self {}
+        Self {
+            program: CustomShaderProgram::new(),
+        }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let shader = shader(CustomShaderProgram {})
+        let controls = row![control(
+            "Max iterations",
+            slider(1..=300, self.program.controls.max_iter, move |iter| {
+                Message::UpdateMaxIterations(iter)
+            })
+            .width(Length::Fill)
+        ),];
+
+        let shader = shader(&self.program)
             .width(Length::Fill)
             .height(Length::Fill);
 
-        shader.into()
+        column![shader, controls]
+            .align_items(Alignment::Center)
+            .padding(10)
+            .spacing(10)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
-    fn update(&mut self, _message: Message) {}
-
-    fn subscription(&self) -> Subscription<Message> {
-        window::frames().map(Message::Tick)
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::UpdateMaxIterations(max_iter) => {
+                self.program.controls.max_iter = max_iter;
+            }
+        }
     }
 }
 
@@ -222,6 +272,5 @@ fn main() -> iced::Result {
         BasicShader::update,
         BasicShader::view,
     )
-    .subscription(BasicShader::subscription)
     .run()
 }

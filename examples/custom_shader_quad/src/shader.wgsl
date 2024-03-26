@@ -1,5 +1,6 @@
 struct Uniforms {
 	aspect: f32,
+	max_iter: u32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -23,8 +24,8 @@ fn vs_main(in: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
 	var p = in.uv;
-	var i: i32 = 0;
-	for (; i < 100; i = i + 1) {
+	var i: u32 = 0;
+	for (; i < uniforms.max_iter; i = i + 1) {
 		let d = p * p;
 		if (d.x + d.y > 4.) {
 			break;
@@ -34,5 +35,5 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 		p = next;
 	}
 
-	return vec4f(vec3f(f32(i) / 100.), 0.);
+	return vec4f(vec3f(f32(i) / f32(uniforms.max_iter)), 0.);
 }
