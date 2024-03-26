@@ -1,0 +1,9 @@
+[package]
+name = "custom_shader_basic"
+version = "0.1.0"
+authors = ["Ivan Avdeev <me@provod.works>"]
+edition = "2021"
+
+[dependencies]
+iced.workspace = true
+iced.features = ["debug", "advanced"]
