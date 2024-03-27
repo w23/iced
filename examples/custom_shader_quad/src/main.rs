@@ -1,5 +1,9 @@
 use iced::mouse;
+use iced::mouse::Cursor;
+use iced::advanced::Shell;
 use iced::widget::shader::wgpu;
+use iced::widget::shader::Event;
+use iced::event::Status;
 use iced::widget::{column, row, shader, slider, text};
 use iced::{Alignment, Element, Length, Rectangle, Size};
 use glam::Vec2;
@@ -195,6 +199,7 @@ impl shader::Primitive for CustomShaderPrimitive {
 enum Message {
     UpdateMaxIterations(u32),
     UpdateZoom(f32),
+    PanningDelta(Vec2),
 }
 
 struct CustomShaderProgram {
@@ -209,8 +214,19 @@ impl CustomShaderProgram {
     }
 }
 
-impl<Message> shader::Program<Message> for CustomShaderProgram {
-    type State = ();
+enum MouseInteraction {
+    Idle,
+    Panning(Vec2),
+}
+
+impl Default for MouseInteraction {
+    fn default() -> Self {
+        MouseInteraction::Idle
+    }
+}
+
+impl shader::Program<Message> for CustomShaderProgram {
+    type State = MouseInteraction;
     type Primitive = CustomShaderPrimitive;
 
     fn draw(
@@ -220,6 +236,44 @@ impl<Message> shader::Program<Message> for CustomShaderProgram {
         _bounds: Rectangle,
     ) -> Self::Primitive {
         CustomShaderPrimitive::new(self.controls)
+    }
+
+    fn update(&self,
+        state: &mut Self::State,
+        event: Event,
+        bounds: Rectangle,
+        cursor: Cursor,
+        _shell: &mut Shell<'_, Message>,
+    ) -> (Status, Option<Message>) {
+        match state {
+            MouseInteraction::Idle => {
+                match event {
+                    Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                        if let Some(pos) = cursor.position_over(bounds) {
+                            *state = MouseInteraction::Panning(Vec2::new(pos.x, pos.y));
+                            return (Status::Captured, None);
+                        }
+                    },
+                    _ => {},
+                }
+            },
+            MouseInteraction::Panning(prev_pos) => {
+                match event {
+                    Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                        *state = MouseInteraction::Idle;
+                    },
+                    Event::Mouse(mouse::Event::CursorMoved{position}) => {
+                        let pos = Vec2::new(position.x, position.y);
+                        let delta = pos - *prev_pos;
+                        *state = MouseInteraction::Panning(pos);
+                        return (Status::Captured, Some(Message::PanningDelta(delta)));
+                    },
+                    _ => {},
+                }
+            },
+        };
+
+        (Status::Ignored, None)
     }
 }
 
@@ -283,9 +337,12 @@ impl BasicShader {
         match message {
             Message::UpdateMaxIterations(max_iter) => {
                 self.program.controls.max_iter = max_iter;
-            }
+            },
             Message::UpdateZoom(zoom) => {
                 self.program.controls.zoom = zoom;
+            },
+            Message::PanningDelta(delta) => {
+                self.program.controls.center -= 2.0 * delta / self.program.controls.zoom;
             }
         }
     }
