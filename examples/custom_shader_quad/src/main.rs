@@ -7,11 +7,10 @@ use glam::Vec2;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Uniforms {
-    aspect: f32,
-    max_iter: u32,
+    resolution: Vec2,
+    center: Vec2,
     scale: f32,
-    center_x: f32,
-    center_y: f32,
+    max_iter: u32,
 }
 
 struct CustomShaderPipeline {
@@ -133,8 +132,8 @@ struct Controls {
 impl Default for Controls {
     fn default() -> Self {
         Self {
-            max_iter: 20,
-            zoom: 0.5,
+            max_iter: 10,
+            zoom: 200.0,
             center: Vec2::new(-1.5, 0.0),
         }
     }
@@ -171,11 +170,10 @@ impl shader::Primitive for CustomShaderPrimitive {
         pipeline.update(
             queue,
             &Uniforms {
-                aspect: target_size.width as f32 / target_size.height as f32,
-                max_iter: self.controls.max_iter,
+                resolution: Vec2::new(target_size.width as f32, target_size.height as f32),
+                center: self.controls.center,
                 scale: 1.0 / self.controls.zoom,
-                center_x: self.controls.center.x,
-                center_y: self.controls.center.y,
+                max_iter: self.controls.max_iter,
             },
         );
     }
@@ -253,14 +251,14 @@ impl BasicShader {
         let controls = row![
             control(
                 "Max iterations",
-                slider(1..=300, self.program.controls.max_iter, move |iter| {
+                slider(10..=300, self.program.controls.max_iter, move |iter| {
                     Message::UpdateMaxIterations(iter)
                 })
                 .width(Length::Fill)
             ),
             control(
                 "Zoom",
-                slider(0.2..=100.0, self.program.controls.zoom, move |zoom| {
+                slider(200.0..=100000.0, self.program.controls.zoom, move |zoom| {
                     Message::UpdateZoom(zoom)
                 })
                 .step(0.01)
