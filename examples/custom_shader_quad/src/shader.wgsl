@@ -40,8 +40,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 	}
 
 	if (i >= uniforms.max_iter) {
-		return vec4f(0.);
+		return vec4f(vec3f(0.), 1.);
 	} else {
-		return vec4f(vec3f(f32(i) / f32(uniforms.max_iter)), 0.);
+		return vec4f(vec3f(f32(i) / f32(uniforms.max_iter)), 1.);
 	}
 }
