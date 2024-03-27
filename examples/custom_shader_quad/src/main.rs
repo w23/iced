@@ -200,6 +200,7 @@ enum Message {
     UpdateMaxIterations(u32),
     UpdateZoom(f32),
     PanningDelta(Vec2),
+    ZoomDelta(Vec2, f32),
 }
 
 struct CustomShaderProgram {
@@ -245,6 +246,18 @@ impl shader::Program<Message> for CustomShaderProgram {
         cursor: Cursor,
         _shell: &mut Shell<'_, Message>,
     ) -> (Status, Option<Message>) {
+
+        if let Event::Mouse(mouse::Event::WheelScrolled{delta}) = event {
+            if let Some(pos) = cursor.position_in(bounds) {
+                let pos = Vec2::new(pos.x, pos.y);
+                let delta = match delta {
+                    mouse::ScrollDelta::Lines { x: _, y } => y,
+                    mouse::ScrollDelta::Pixels { x: _, y } => y,
+                };
+                return (Status::Captured, Some(Message::ZoomDelta(pos, delta)));
+            }
+        }
+
         match state {
             MouseInteraction::Idle => {
                 match event {
@@ -344,6 +357,9 @@ impl BasicShader {
             Message::PanningDelta(delta) => {
                 self.program.controls.center -= 2.0 * delta / self.program.controls.zoom;
             }
+            Message::ZoomDelta(_pos, delta) => {
+                self.program.controls.zoom = (self.program.controls.zoom + delta * 100.0).max(200.0);
+            },
         }
     }
 }
