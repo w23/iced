@@ -8,6 +8,19 @@ use iced::widget::shader::Event;
 use iced::widget::{column, row, shader, slider, text};
 use iced::{Alignment, Element, Length, Rectangle, Size};
 
+const ZOOM_MIN: f32 = 1.0;
+const ZOOM_DEFAULT: f32 = 2.0;
+const ZOOM_MAX: f32 = 20.0;
+
+const ZOOM_PIXELS_FACTOR: f32 = 200.0;
+const ZOOM_WHEEL_SCALE: f32 = 0.2;
+
+const ITERS_MIN: u32 = 20;
+const ITERS_DEFAULT: u32 = 20;
+const ITERS_MAX: u32 = 200;
+
+const CENTER_DEFAULT: Vec2 = Vec2::new(-1.5, 0.0);
+
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Uniforms {
@@ -133,12 +146,18 @@ struct Controls {
     center: Vec2,
 }
 
+impl Controls {
+    fn scale(&self) -> f32 {
+        1.0 / 2.0_f32.powf(self.zoom) / ZOOM_PIXELS_FACTOR
+    }
+}
+
 impl Default for Controls {
     fn default() -> Self {
         Self {
-            max_iter: 10,
-            zoom: 200.0,
-            center: Vec2::new(-1.5, 0.0),
+            max_iter: ITERS_DEFAULT,
+            zoom: ZOOM_DEFAULT,
+            center: CENTER_DEFAULT,
         }
     }
 }
@@ -179,7 +198,7 @@ impl shader::Primitive for CustomShaderPrimitive {
                     target_size.height as f32,
                 ),
                 center: self.controls.center,
-                scale: 1.0 / self.controls.zoom,
+                scale: self.controls.scale(),
                 max_iter: self.controls.max_iter,
             },
         );
@@ -328,7 +347,7 @@ impl BasicShader {
         let controls = row![
             control(
                 "Max iterations",
-                slider(10..=300, self.program.controls.max_iter, move |iter| {
+                slider(ITERS_MIN..=ITERS_MAX, self.program.controls.max_iter, move |iter| {
                     Message::UpdateMaxIterations(iter)
                 })
                 .width(Length::Fill)
@@ -336,7 +355,7 @@ impl BasicShader {
             control(
                 "Zoom",
                 slider(
-                    200.0..=100000.0,
+                    ZOOM_MIN..=ZOOM_MAX,
                     self.program.controls.zoom,
                     move |zoom| { Message::UpdateZoom(zoom) }
                 )
@@ -368,17 +387,17 @@ impl BasicShader {
             }
             Message::PanningDelta(delta) => {
                 self.program.controls.center -=
-                    2.0 * delta / self.program.controls.zoom;
+                    2.0 * delta * self.program.controls.scale();
             }
             Message::ZoomDelta(pos, bounds, delta) => {
-                let delta = delta * 100.;
+                let delta = delta * ZOOM_WHEEL_SCALE;
+                let prev_scale = self.program.controls.scale();
                 let prev_zoom = self.program.controls.zoom;
-                self.program.controls.zoom = (prev_zoom + delta).max(200.0);
+                self.program.controls.zoom = (prev_zoom + delta).max(ZOOM_MIN).min(ZOOM_MAX);
 
                 let vec = pos - Vec2::new(bounds.width, bounds.height) * 0.5;
-                let scale_prev = 2. / prev_zoom;
-                let scale_new = 2. / self.program.controls.zoom;
-                self.program.controls.center += vec * (scale_prev - scale_new);
+                let new_scale = self.program.controls.scale();
+                self.program.controls.center += vec * (prev_scale - new_scale) * 2.0;
             }
         }
     }
