@@ -1,12 +1,12 @@
+use glam::Vec2;
+use iced::advanced::Shell;
+use iced::event::Status;
 use iced::mouse;
 use iced::mouse::Cursor;
-use iced::advanced::Shell;
 use iced::widget::shader::wgpu;
 use iced::widget::shader::Event;
-use iced::event::Status;
 use iced::widget::{column, row, shader, slider, text};
 use iced::{Alignment, Element, Length, Rectangle, Size};
-use glam::Vec2;
 
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
@@ -174,7 +174,10 @@ impl shader::Primitive for CustomShaderPrimitive {
         pipeline.update(
             queue,
             &Uniforms {
-                resolution: Vec2::new(target_size.width as f32, target_size.height as f32),
+                resolution: Vec2::new(
+                    target_size.width as f32,
+                    target_size.height as f32,
+                ),
                 center: self.controls.center,
                 scale: 1.0 / self.controls.zoom,
                 max_iter: self.controls.max_iter,
@@ -239,50 +242,57 @@ impl shader::Program<Message> for CustomShaderProgram {
         CustomShaderPrimitive::new(self.controls)
     }
 
-    fn update(&self,
+    fn update(
+        &self,
         state: &mut Self::State,
         event: Event,
         bounds: Rectangle,
         cursor: Cursor,
         _shell: &mut Shell<'_, Message>,
     ) -> (Status, Option<Message>) {
-
-        if let Event::Mouse(mouse::Event::WheelScrolled{delta}) = event {
+        if let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event {
             if let Some(pos) = cursor.position_in(bounds) {
                 let pos = Vec2::new(pos.x, pos.y);
                 let delta = match delta {
                     mouse::ScrollDelta::Lines { x: _, y } => y,
                     mouse::ScrollDelta::Pixels { x: _, y } => y,
                 };
-                return (Status::Captured, Some(Message::ZoomDelta(pos, bounds, delta)));
+                return (
+                    Status::Captured,
+                    Some(Message::ZoomDelta(pos, bounds, delta)),
+                );
             }
         }
 
         match state {
-            MouseInteraction::Idle => {
-                match event {
-                    Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
-                        if let Some(pos) = cursor.position_over(bounds) {
-                            *state = MouseInteraction::Panning(Vec2::new(pos.x, pos.y));
-                            return (Status::Captured, None);
-                        }
-                    },
-                    _ => {},
+            MouseInteraction::Idle => match event {
+                Event::Mouse(mouse::Event::ButtonPressed(
+                    mouse::Button::Left,
+                )) => {
+                    if let Some(pos) = cursor.position_over(bounds) {
+                        *state =
+                            MouseInteraction::Panning(Vec2::new(pos.x, pos.y));
+                        return (Status::Captured, None);
+                    }
                 }
+                _ => {}
             },
-            MouseInteraction::Panning(prev_pos) => {
-                match event {
-                    Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
-                        *state = MouseInteraction::Idle;
-                    },
-                    Event::Mouse(mouse::Event::CursorMoved{position}) => {
-                        let pos = Vec2::new(position.x, position.y);
-                        let delta = pos - *prev_pos;
-                        *state = MouseInteraction::Panning(pos);
-                        return (Status::Captured, Some(Message::PanningDelta(delta)));
-                    },
-                    _ => {},
+            MouseInteraction::Panning(prev_pos) => match event {
+                Event::Mouse(mouse::Event::ButtonReleased(
+                    mouse::Button::Left,
+                )) => {
+                    *state = MouseInteraction::Idle;
                 }
+                Event::Mouse(mouse::Event::CursorMoved { position }) => {
+                    let pos = Vec2::new(position.x, position.y);
+                    let delta = pos - *prev_pos;
+                    *state = MouseInteraction::Panning(pos);
+                    return (
+                        Status::Captured,
+                        Some(Message::PanningDelta(delta)),
+                    );
+                }
+                _ => {}
             },
         };
 
@@ -325,9 +335,11 @@ impl BasicShader {
             ),
             control(
                 "Zoom",
-                slider(200.0..=100000.0, self.program.controls.zoom, move |zoom| {
-                    Message::UpdateZoom(zoom)
-                })
+                slider(
+                    200.0..=100000.0,
+                    self.program.controls.zoom,
+                    move |zoom| { Message::UpdateZoom(zoom) }
+                )
                 .step(0.01)
                 .width(Length::Fill)
             ),
@@ -350,12 +362,13 @@ impl BasicShader {
         match message {
             Message::UpdateMaxIterations(max_iter) => {
                 self.program.controls.max_iter = max_iter;
-            },
+            }
             Message::UpdateZoom(zoom) => {
                 self.program.controls.zoom = zoom;
-            },
+            }
             Message::PanningDelta(delta) => {
-                self.program.controls.center -= 2.0 * delta / self.program.controls.zoom;
+                self.program.controls.center -=
+                    2.0 * delta / self.program.controls.zoom;
             }
             Message::ZoomDelta(pos, bounds, delta) => {
                 let delta = delta * 100.;
@@ -364,9 +377,9 @@ impl BasicShader {
 
                 let vec = pos - Vec2::new(bounds.width, bounds.height) * 0.5;
                 let scale_prev = 2. / prev_zoom;
-                let scale_new  = 2. / self.program.controls.zoom;
+                let scale_new = 2. / self.program.controls.zoom;
                 self.program.controls.center += vec * (scale_prev - scale_new);
-            },
+            }
         }
     }
 }
