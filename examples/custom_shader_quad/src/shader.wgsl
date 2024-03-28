@@ -24,8 +24,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-	let map_coords = uniforms.center + (in.position.xy - uniforms.resolution * .5) * uniforms.scale;
-	let p0 = map_coords;
+	let p0 = uniforms.center + (in.position.xy - uniforms.resolution * .5) * uniforms.scale;
 	var p = p0;
 	var i: u32 = 0;
 	for (; i < uniforms.max_iter; i = i + 1) {
@@ -34,8 +33,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 			break;
 		}
 
-		let next = vec2f(d.x - d.y + p0.x, 2. * p.x * p.y + p0.y);
-		p = next;
+		p = vec2f(d.x - d.y + p0.x, 2. * p.x * p.y + p0.y);
 	}
 
 	if (i >= uniforms.max_iter) {

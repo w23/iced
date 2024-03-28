@@ -10,7 +10,7 @@ use iced::{Alignment, Element, Length, Rectangle, Size};
 
 const ZOOM_MIN: f32 = 1.0;
 const ZOOM_DEFAULT: f32 = 2.0;
-const ZOOM_MAX: f32 = 20.0;
+const ZOOM_MAX: f32 = 17.0;
 
 const ZOOM_PIXELS_FACTOR: f32 = 200.0;
 const ZOOM_WHEEL_SCALE: f32 = 0.2;
@@ -347,9 +347,11 @@ impl BasicShader {
         let controls = row![
             control(
                 "Max iterations",
-                slider(ITERS_MIN..=ITERS_MAX, self.program.controls.max_iter, move |iter| {
-                    Message::UpdateMaxIterations(iter)
-                })
+                slider(
+                    ITERS_MIN..=ITERS_MAX,
+                    self.program.controls.max_iter,
+                    move |iter| { Message::UpdateMaxIterations(iter) }
+                )
                 .width(Length::Fill)
             ),
             control(
@@ -393,11 +395,13 @@ impl BasicShader {
                 let delta = delta * ZOOM_WHEEL_SCALE;
                 let prev_scale = self.program.controls.scale();
                 let prev_zoom = self.program.controls.zoom;
-                self.program.controls.zoom = (prev_zoom + delta).max(ZOOM_MIN).min(ZOOM_MAX);
+                self.program.controls.zoom =
+                    (prev_zoom + delta).max(ZOOM_MIN).min(ZOOM_MAX);
 
                 let vec = pos - Vec2::new(bounds.width, bounds.height) * 0.5;
                 let new_scale = self.program.controls.scale();
-                self.program.controls.center += vec * (prev_scale - new_scale) * 2.0;
+                self.program.controls.center +=
+                    vec * (prev_scale - new_scale) * 2.0;
             }
         }
     }
