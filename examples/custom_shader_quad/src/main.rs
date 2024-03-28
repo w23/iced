@@ -200,7 +200,7 @@ enum Message {
     UpdateMaxIterations(u32),
     UpdateZoom(f32),
     PanningDelta(Vec2),
-    ZoomDelta(Vec2, f32),
+    ZoomDelta(Vec2, Rectangle, f32),
 }
 
 struct CustomShaderProgram {
@@ -254,7 +254,7 @@ impl shader::Program<Message> for CustomShaderProgram {
                     mouse::ScrollDelta::Lines { x: _, y } => y,
                     mouse::ScrollDelta::Pixels { x: _, y } => y,
                 };
-                return (Status::Captured, Some(Message::ZoomDelta(pos, delta)));
+                return (Status::Captured, Some(Message::ZoomDelta(pos, bounds, delta)));
             }
         }
 
@@ -357,8 +357,15 @@ impl BasicShader {
             Message::PanningDelta(delta) => {
                 self.program.controls.center -= 2.0 * delta / self.program.controls.zoom;
             }
-            Message::ZoomDelta(_pos, delta) => {
-                self.program.controls.zoom = (self.program.controls.zoom + delta * 100.0).max(200.0);
+            Message::ZoomDelta(pos, bounds, delta) => {
+                let delta = delta * 100.;
+                let prev_zoom = self.program.controls.zoom;
+                self.program.controls.zoom = (prev_zoom + delta).max(200.0);
+
+                let vec = pos - Vec2::new(bounds.width, bounds.height) * 0.5;
+                let scale_prev = 2. / prev_zoom;
+                let scale_new  = 2. / self.program.controls.zoom;
+                self.program.controls.center += vec * (scale_prev - scale_new);
             },
         }
     }
